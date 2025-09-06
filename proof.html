@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" href="NYCU.png" type="image/png" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>幾何重根數說明</title>
+<style>
+  body {
+    font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+    line-height: 1.6;
+    padding: 20px;
+    background-color: #f9f9f9;
+  }
+  h2 {
+    color: #333;
+    border-bottom: 2px solid #666;
+    padding-bottom: 4px;
+  }
+  section {
+    margin-bottom: 20px;
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 15px 20px;
+    border-radius: 8px;
+  }
+  ul {
+    margin-left: 20px;
+  }
+  ul li {
+    margin-bottom: 8px;
+  }
+  strong {
+    color: #0055aa;
+  }
+</style>
+</head>
+<body>
+
+<section>
+  <h2>為什麼用「幾何重根數」？</h2>
+
+  <p><strong>幾何重根數表示「獨立特徵向量的數量」：</strong></p>
+  <ul>
+    <li>幾何重根數是對應特徵空間的維度，代表線性獨立的特徵向量個數。</li>
+    <li>只有「線性獨立」的特徵向量才對描寫矩陣的性質有實質幫助，如對角化等。</li>
+  </ul>
+
+  <p><strong>代數重根數與矩陣的結構有關：</strong></p>
+  <ul>
+    <li>代數重根數是特徵多項式中根的重複次數。</li>
+    <li>代數重根數大於等於幾何重根數，且相等時矩陣可對角化。</li>
+    <li>如果用代數重根數作為零特徵值的數量，可能高估獨立特徵向量的數目。</li>
+  </ul>
+
+  <p><strong>解釋矩陣秩和零特徵值數的關係：</strong></p>
+  <ul>
+    <li>根據筆記，特徵值為0的特徵空間大小直接由秩決定。</li>
+    <li>這種數量對應的是實際的特徵向量（幾何意義），而非多項式的代數計數。</li>
+  </ul>
+
+  <p><strong>簡單總結：</strong></p>
+  <ul>
+    <li>代數重根數告訴你重根有幾次，但可能不對應有相同數量的獨立特徵向量。</li>
+    <li>幾何重根數才是真正反映「特徵向量數量」的指標。</li>
+    <li>因此特徵值為0的「數量」在應用中通常指幾何重根數。</li>
+  </ul>
+</section>
+
+</body>
+</html>
