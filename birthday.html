@@ -348,7 +348,7 @@ document.getElementById('s1').addEventListener('touchend',e=>{
 function openEnv(){
   if(envOpened)return;
   envOpened=true;
-  envScene.style.transition='transform .5s ease';
+  envScene.style.transition='transform .95s ease';
   envScene.style.transform='rotateX(0) rotateY(0) scale(1.06)';
   envBase.classList.add('open');
   setTimeout(()=>{document.getElementById('envLetter').classList.add('show')},500);
