@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>生日快樂 🎂</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--gold:#F5C842;--gold2:#D4A843;--rose:#E8A0BF;--violet:#7B5EA7;--cream:#FAF3E0;--ink:#0A0A0F}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;user-select:none;font-family:'DM Sans',sans-serif;color:var(--cream)}
+
+/* 3D canvas always behind */
+#three-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* screens */
+.screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;transition:opacity .7s cubic-bezier(.4,0,.2,1),transform .7s cubic-bezier(.4,0,.2,1)}
+.screen.out{opacity:0;transform:scale(.92);pointer-events:none}
+.screen.below{opacity:0;transform:translateY(60px) scale(.96);pointer-events:none}
+
+/* nav dots */
+.ndots{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:99}
+.nd{width:6px;height:6px;border-radius:3px;background:rgba(245,200,66,.2);transition:width .3s,background .3s}
+.nd.on{width:22px;background:var(--gold)}
+
+/* toast */
+#toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%) translateY(12px);background:rgba(10,10,15,.85);border:1px solid rgba(245,200,66,.35);backdrop-filter:blur(8px);color:var(--gold);padding:9px 22px;border-radius:30px;font-size:.75rem;letter-spacing:.1em;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:300;white-space:nowrap}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* confetti pieces */
+.cf{position:fixed;pointer-events:none;z-index:400;animation:cfDrop var(--dur) ease forwards var(--del)}
+@keyframes cfDrop{0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)}100%{opacity:0;transform:translate(var(--tx),250px) rotate(540deg) scale(.4)}}
+
+/* ═══ S1: ENVELOPE ═══ */
+#s1{cursor:pointer;perspective:800px}
+.env-scene{width:280px;height:190px;position:relative;transform-style:preserve-3d;transition:transform .2s ease}
+.env-base{width:280px;height:190px;background:linear-gradient(145deg,#1c1030,#261840);border:1px solid rgba(245,200,66,.22);border-radius:10px;position:relative;overflow:visible;transform-style:preserve-3d;box-shadow:0 20px 60px rgba(0,0,0,.7),0 0 40px rgba(123,94,167,.25),inset 0 1px 0 rgba(255,255,255,.06)}
+/* bottom triangles */
+.env-base::before{content:'';position:absolute;bottom:0;left:0;width:0;height:0;border-style:solid;border-width:90px 140px 0 0;border-color:rgba(30,18,50,.9) transparent transparent transparent}
+.env-base::after{content:'';position:absolute;bottom:0;right:0;width:0;height:0;border-style:solid;border-width:90px 0 0 140px;border-color:transparent transparent transparent rgba(30,18,50,.9)}
+/* flap */
+.env-flap{position:absolute;top:0;left:0;width:280px;height:95px;clip-path:polygon(0 0,50% 62%,100% 0);background:linear-gradient(160deg,#2a1a45,#1c1030);border-bottom:1px solid rgba(245,200,66,.12);transform-origin:50% 0;transform:rotateX(0deg);transition:transform .8s cubic-bezier(.4,0,.2,1);z-index:5;transform-style:preserve-3d;backface-visibility:hidden}
+.env-base.open .env-flap{transform:rotateX(-185deg)}
+/* seal */
+.seal{position:absolute;top:28px;left:50%;transform:translateX(-50%);width:40px;height:40px;background:radial-gradient(circle at 35% 35%,#ffe07a,#d4a843);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 14px rgba(212,168,67,.5);z-index:6;transition:opacity .25s,transform .25s}
+.env-base.open .seal{opacity:0;transform:translateX(-50%) scale(.3)}
+/* letter */
+.env-letter{position:absolute;left:20px;right:20px;bottom:14px;background:linear-gradient(160deg,#fdf6e3,#f5e8c8);border-radius:6px;padding:12px 14px;color:#2a1a0a;font-family:'Playfair Display',serif;font-style:italic;font-size:11.5px;line-height:1.65;transform:translateY(0px);opacity:0;transition:transform .8s .15s cubic-bezier(.4,0,.2,1),opacity .6s .15s;box-shadow:0 -4px 20px rgba(0,0,0,.4);z-index:4}
+.env-letter.show{transform:translateY(-44px);opacity:1}
+.env-letter b{color:#7B5EA7;font-style:normal;font-size:12.5px}
+
+.env-hint{margin-top:22px;font-size:.65rem;letter-spacing:.28em;text-transform:uppercase;color:rgba(245,200,66,.6);animation:blink 2.2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.35}50%{opacity:.9}}
+.tap-ring{position:absolute;top:50%;left:50%;width:56px;height:56px;margin:-28px;border:1.5px solid rgba(245,200,66,.6);border-radius:50%;animation:tapR 1.8s ease-out infinite;pointer-events:none}
+@keyframes tapR{0%{transform:scale(.3);opacity:.9}100%{transform:scale(2.2);opacity:0}}
+
+/* ═══ S2: CANDLE (3D scene overlay) ═══ */
+#s2{}
+.c-title{font-family:'Playfair Display',serif;font-size:clamp(2.6rem,10vw,3.8rem);font-weight:900;background:linear-gradient(120deg,var(--gold) 0%,var(--rose) 50%,var(--gold) 100%);background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 3s ease-in-out infinite;text-align:center;line-height:1;letter-spacing:-.02em}
+@keyframes shimmer{0%,100%{background-position:0%}50%{background-position:100%}}
+.c-sub{font-family:'Playfair Display',serif;font-style:italic;font-size:1.05rem;color:var(--rose);opacity:.8;margin:.4em 0 2.2rem;letter-spacing:.06em}
+
+/* 2D candle (on top of 3D scene glow) */
+.candle-wrap{position:relative;display:flex;flex-direction:column;align-items:center;margin-bottom:.5rem}
+.flame-outer{position:relative;display:flex;flex-direction:column;align-items:center;transition:opacity .5s}
+.flame-outer.out{opacity:0}
+.flame-svg{width:36px;height:60px;filter:drop-shadow(0 0 10px #F5C842) drop-shadow(0 0 24px #f97316) drop-shadow(0 0 50px rgba(249,115,22,.4))}
+.wick{width:3px;height:12px;background:linear-gradient(to bottom,#6b4c2a,#3a2a10);border-radius:1px;margin-top:-2px}
+.cbody{width:44px;height:120px;background:linear-gradient(100deg,#efe0ce 0%,#d4a87c 35%,#b8845a 65%,#9a6840 100%);border-radius:5px 5px 10px 10px;position:relative;overflow:hidden;box-shadow:inset -6px 0 12px rgba(0,0,0,.25),4px 8px 20px rgba(0,0,0,.4)}
+.cbody::after{content:'';position:absolute;top:0;left:6px;width:6px;height:100%;background:rgba(255,255,255,.3);border-radius:3px;filter:blur(1px)}
+.cbody-drip{position:absolute;top:8px;right:10px;width:8px;height:18px;background:rgba(255,255,255,.18);border-radius:0 0 4px 4px}
+.cbase{width:58px;height:14px;background:linear-gradient(100deg,#e0b860,#9a7030);border-radius:5px;box-shadow:0 6px 20px rgba(200,150,50,.35),0 2px 6px rgba(0,0,0,.5)}
+
+.smoke-wrap{position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:20px;height:60px;pointer-events:none;opacity:0;transition:opacity .3s}
+.smoke-wrap.show{opacity:1}
+.sp{position:absolute;bottom:0;left:50%;width:3px;height:3px;border-radius:50%;background:rgba(200,200,220,.5);transform:translateX(-50%)}
+
+.blow-hint{font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--rose);margin-top:1.4rem;text-align:center}
+.mic-btn{margin-top:1.1rem;padding:13px 30px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.4);border-radius:32px;color:var(--gold);font-family:'DM Sans',sans-serif;font-size:.82rem;letter-spacing:.1em;cursor:pointer;transition:background .2s,box-shadow .2s}
+.mic-btn.on{box-shadow:0 0 0 0 rgba(245,200,66,.5);animation:mPulse 1.1s ease-in-out infinite}
+@keyframes mPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,200,66,.4)}50%{box-shadow:0 0 0 14px rgba(245,200,66,0)}}
+
+/* ═══ S3: 3D FLIP CARDS ═══ */
+#s3{perspective:1200px}
+.wlabel{font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(245,200,66,.6);margin-bottom:1.6rem}
+.card-viewport{width:290px;height:370px;position:relative}
+.wcard-3d{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .65s cubic-bezier(.4,0,.2,1),opacity .4s;cursor:grab;will-change:transform}
+.wcard-3d.dragging{transition:none;cursor:grabbing}
+.wcard-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:22px;padding:2rem 1.8rem;display:flex;flex-direction:column}
+.wcard-front{background:linear-gradient(145deg,#150f24,#1e1535,#251b40);border:1px solid rgba(245,200,66,.2);box-shadow:0 30px 70px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06)}
+.wcard-back{background:linear-gradient(145deg,#1e1535,#2a1e4a,#1a1230);border:1px solid rgba(232,160,191,.25);box-shadow:0 30px 70px rgba(0,0,0,.6);transform:rotateY(180deg);align-items:center;justify-content:center;text-align:center}
+.wi{font-size:3rem;margin-bottom:.9rem;filter:drop-shadow(0 4px 12px rgba(245,200,66,.3))}
+.wt{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:700;color:var(--gold);margin-bottom:.8rem;text-shadow:0 0 20px rgba(245,200,66,.3)}
+.wb{font-size:.88rem;font-weight:300;line-height:1.8;color:rgba(250,243,224,.7);flex:1}
+.wcard-back .wb{font-family:'Playfair Display',serif;font-style:italic;font-size:1.05rem;color:var(--rose);line-height:1.7;max-width:220px}
+.wcard-back .wi{font-size:2.2rem}
+.whint{margin-top:auto;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(245,200,66,.3)}
+.wctr{font-size:.72rem;color:rgba(250,243,224,.4);margin-top:1.1rem;letter-spacing:.1em}
+.warrows{display:flex;gap:14px;margin-top:1rem}
+.warr{width:46px;height:46px;border:1px solid rgba(245,200,66,.22);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:18px;cursor:pointer;background:rgba(245,200,66,.04);transition:background .2s,border-color .2s,transform .1s}
+.warr:active{background:rgba(245,200,66,.14);border-color:var(--gold);transform:scale(.93)}
+
+/* ═══ S4: FINALE ═══ */
+#s4{}
+.fin-canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
+.fin-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:2rem}
+.fin-title{font-family:'Playfair Display',serif;font-size:clamp(2rem,8vw,2.8rem);font-weight:900;line-height:1.18;background:linear-gradient(135deg,var(--gold),var(--rose),#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:1.1rem;animation:titleIn .8s cubic-bezier(.4,0,.2,1) both}
+@keyframes titleIn{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:none}}
+.fin-msg{font-size:.9rem;font-weight:300;line-height:1.9;color:rgba(250,243,224,.65);max-width:290px;margin:0 auto 2.2rem;animation:titleIn .8s .15s cubic-bezier(.4,0,.2,1) both}
+.fin-btn{padding:15px 40px;background:linear-gradient(120deg,var(--gold),#f0a040);color:#0a0a0f;border:none;border-radius:34px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;letter-spacing:.08em;cursor:pointer;box-shadow:0 8px 32px rgba(245,200,66,.35);transition:transform .15s,box-shadow .2s;animation:titleIn .8s .3s cubic-bezier(.4,0,.2,1) both}
+.fin-btn:active{transform:scale(.95);box-shadow:0 4px 16px rgba(245,200,66,.2)}
+.fin-restart{margin-top:14px;background:transparent;border:none;color:rgba(250,243,224,.35);font-family:'DM Sans',sans-serif;font-size:.75rem;cursor:pointer;letter-spacing:.12em;text-transform:uppercase;animation:titleIn .8s .45s cubic-bezier(.4,0,.2,1) both}
+</style>
+</head>
+<body>
+
+<canvas id="three-canvas"></canvas>
+
+<div class="ndots">
+  <div class="nd on" id="d0"></div>
+  <div class="nd" id="d1"></div>
+  <div class="nd" id="d2"></div>
+  <div class="nd" id="d3"></div>
+</div>
+<div id="toast"></div>
+
+<!-- S1 ENVELOPE -->
+<div class="screen" id="s1">
+  <p style="font-size:.62rem;letter-spacing:.32em;text-transform:uppercase;color:rgba(245,200,66,.7);margin-bottom:1.5rem">✦ 有一封信給你 ✦</p>
+  <div class="env-scene" id="envScene">
+    <div class="env-base" id="envBase">
+      <div class="env-flap"></div>
+      <div class="seal" id="seal">✦</div>
+      <div class="env-letter" id="envLetter"><b>親愛的朋友，</b><br><br>今天是你的日子。這份小小的心意，帶著所有的愛與祝福，靜靜等待你打開它 ✨</div>
+      <div class="tap-ring"></div>
+    </div>
+  </div>
+  <p class="env-hint" style="margin-top:20px">輕觸信封 · 開啟驚喜</p>
+</div>
+
+<!-- S2 CANDLE -->
+<div class="screen below" id="s2">
+  <div class="c-title">生日快樂</div>
+  <div class="c-sub">Happy Birthday</div>
+  <div class="candle-wrap" id="candleWrap">
+    <div class="flame-outer" id="flameOuter">
+      <svg class="flame-svg" id="flameSvg" viewBox="0 0 36 60" fill="none">
+        <defs>
+          <radialGradient id="fg" cx="50%" cy="75%" r="55%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="25%" stop-color="#ffe566"/>
+            <stop offset="55%" stop-color="#F5C842"/>
+            <stop offset="80%" stop-color="#f97316"/>
+            <stop offset="100%" stop-color="transparent"/>
+          </radialGradient>
+          <radialGradient id="fg2" cx="50%" cy="80%" r="40%">
+            <stop offset="0%" stop-color="#fff" stop-opacity=".9"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <path id="flameP" d="M18 58 C8 52 2 42 4 28 C6 18 12 12 18 2 C24 12 30 18 32 28 C34 42 28 52 18 58Z" fill="url(#fg)"/>
+        <ellipse cx="18" cy="44" rx="5" ry="8" fill="url(#fg2)"/>
+      </svg>
+    </div>
+    <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+      <div class="smoke-wrap" id="smokeWrap"><div class="sp" id="sp1"></div></div>
+      <div class="wick"></div>
+      <div class="cbody"><div class="cbody-drip"></div></div>
+      <div class="cbase"></div>
+    </div>
+  </div>
+  <div class="blow-hint" id="blowHint">對著手機吹一口氣來許願 🕯️</div>
+  <button class="mic-btn" id="micBtn">🎤 啟動麥克風吹蠟燭</button>
+</div>
+
+<!-- S3 WISH CARDS -->
+<div class="screen below" id="s3">
+  <p class="wlabel">✦ 給你的三個心願 ✦</p>
+  <div class="card-viewport" id="cardViewport"></div>
+  <div class="warrows">
+    <div class="warr" id="prevBtn">←</div>
+    <div class="warr" id="nextBtn">→</div>
+  </div>
+  <p class="wctr" id="wctr">1 / 3</p>
+</div>
+
+<!-- S4 FINALE -->
+<div class="screen below" id="s4">
+  <canvas class="fin-canvas" id="finCanvas"></canvas>
+  <div class="fin-content">
+    <div class="fin-title">願你的每一天<br>都閃閃發光 ✨</div>
+    <p class="fin-msg">謝謝你讓我陪你走過這個特別的日子，<br>所有的美好都為你而來。</p>
+    <button class="fin-btn" onclick="shootConfetti();initFinCanvas()">🎉 再慶祝一次！</button>
+    <button class="fin-restart" onclick="doRestart()">↩ 從頭再來</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════
+   THREE.JS BACKGROUND SCENE
+══════════════════════════════════════ */
+let renderer,scene,camera,particleMesh,tiltX=0,tiltY=0;
+const CVS=document.getElementById('three-canvas');
+
+function initThree(){
+  renderer=new THREE.WebGLRenderer({canvas:CVS,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,200);
+  camera.position.z=40;
+
+  // ── Star field ──
+  const starGeo=new THREE.BufferGeometry();
+  const N=1400,sp=new Float32Array(N*3),sc=new Float32Array(N*3);
+  const cols=[[.96,.78,.26],[.91,.63,.75],[.48,.37,.66],[1,1,1]];
+  for(let i=0;i<N;i++){
+    sp[i*3]=(Math.random()-.5)*160;
+    sp[i*3+1]=(Math.random()-.5)*160;
+    sp[i*3+2]=(Math.random()-.5)*80;
+    const c=cols[Math.floor(Math.random()*cols.length)];
+    sc[i*3]=c[0];sc[i*3+1]=c[1];sc[i*3+2]=c[2];
+  }
+  starGeo.setAttribute('position',new THREE.BufferAttribute(sp,3));
+  starGeo.setAttribute('color',new THREE.BufferAttribute(sc,3));
+  const starMat=new THREE.PointsMaterial({size:.28,vertexColors:true,transparent:true,opacity:.75});
+  particleMesh=new THREE.Points(starGeo,starMat);
+  scene.add(particleMesh);
+
+  // ── Floating orbs ──
+  [[.9,.75,.25,6],[.85,.55,.72,4],[.47,.35,.65,5]].forEach(([r,g,b,z])=>{
+    const g2=new THREE.SphereGeometry(2.5,24,24);
+    const m=new THREE.MeshBasicMaterial({color:new THREE.Color(r,g,b),transparent:true,opacity:.04});
+    const mesh=new THREE.Mesh(g2,m);
+    mesh.position.set((Math.random()-.5)*20,(Math.random()-.5)*20,z);
+    mesh.userData.speed=.0004+Math.random()*.0003;
+    mesh.userData.amp=3+Math.random()*4;
+    mesh.userData.phase=Math.random()*Math.PI*2;
+    scene.add(mesh);
+  });
+
+  // ── Ring ──
+  const rg=new THREE.TorusGeometry(12,0.06,8,120);
+  const rm=new THREE.MeshBasicMaterial({color:0xF5C842,transparent:true,opacity:.12});
+  const ring=new THREE.Mesh(rg,rm);
+  ring.rotation.x=Math.PI*.3;
+  ring.userData.isRing=true;
+  scene.add(ring);
+
+  const rg2=new THREE.TorusGeometry(16,0.04,8,120);
+  const rm2=new THREE.MeshBasicMaterial({color:0xE8A0BF,transparent:true,opacity:.08});
+  const ring2=new THREE.Mesh(rg2,rm2);
+  ring2.rotation.x=Math.PI*.5;
+  ring2.rotation.z=Math.PI*.2;
+  ring2.userData.isRing=true;
+  scene.add(ring2);
+
+  window.addEventListener('resize',()=>{
+    renderer.setSize(innerWidth,innerHeight);
+    camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+  });
+  animThree();
+}
+
+let _t=0;
+function animThree(){
+  requestAnimationFrame(animThree);
+  _t+=.005;
+  particleMesh.rotation.y+=.0006;
+  particleMesh.rotation.x+=.0002;
+  camera.position.x+=(tiltY*8-camera.position.x)*.04;
+  camera.position.y+=(-tiltX*6-camera.position.y)*.04;
+  camera.lookAt(0,0,0);
+  scene.children.forEach(obj=>{
+    if(obj.userData.isRing){obj.rotation.y+=.003;obj.rotation.z+=.001}
+    if(obj.userData.speed){
+      obj.position.y=Math.sin(_t*obj.userData.speed*1000+obj.userData.phase)*obj.userData.amp;
+    }
+  });
+  renderer.render(scene,camera);
+}
+
+// gyro tilt
+window.addEventListener('deviceorientation',e=>{
+  if(e.beta==null)return;
+  tiltX=Math.max(-1,Math.min(1,(e.beta-45)/45));
+  tiltY=Math.max(-1,Math.min(1,e.gamma/45));
+});
+// mouse fallback
+document.addEventListener('mousemove',e=>{
+  tiltY=(e.clientX/innerWidth-.5)*2;
+  tiltX=-(e.clientY/innerHeight-.5)*2;
+});
+
+initThree();
+
+/* ══════════════════════════════════════
+   SCREEN MANAGEMENT
+══════════════════════════════════════ */
+const screens=['s1','s2','s3','s4'];
+let cur=0;
+function goTo(i){
+  const fromEl=document.getElementById(screens[cur]);
+  fromEl.classList.add('out');
+  setTimeout(()=>fromEl.classList.add('below'),300);
+  setTimeout(()=>{
+    fromEl.classList.remove('out');
+    cur=i;
+    const toEl=document.getElementById(screens[cur]);
+    toEl.classList.remove('below','out');
+    document.querySelectorAll('.nd').forEach((d,j)=>d.classList.toggle('on',j===cur));
+  },300);
+}
+
+/* ══════════════════════════════════════
+   S1: ENVELOPE + 3D tilt on touch
+══════════════════════════════════════ */
+let envOpened=false;
+const envScene=document.getElementById('envScene');
+const envBase=document.getElementById('envBase');
+
+// 3D parallax on touch/mouse
+document.getElementById('s1').addEventListener('touchmove',e=>{
+  if(envOpened)return;
+  const t=e.touches[0];
+  const rx=(t.clientY/innerHeight-.5)*-22;
+  const ry=(t.clientX/innerWidth-.5)*22;
+  envScene.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg)`;
+},{passive:true});
+document.getElementById('s1').addEventListener('touchend',()=>{
+  if(!envOpened) envScene.style.transform='rotateX(0) rotateY(0)';
+});
+document.getElementById('s1').addEventListener('mousemove',e=>{
+  if(envOpened)return;
+  const rx=(e.clientY/innerHeight-.5)*-18;
+  const ry=(e.clientX/innerWidth-.5)*18;
+  envScene.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg)`;
+});
+
+document.getElementById('s1').addEventListener('click',openEnv);
+document.getElementById('s1').addEventListener('touchend',e=>{
+  if(Math.abs(e.changedTouches[0].clientX - (e.target._tx||e.changedTouches[0].clientX))<10) openEnv();
+});
+
+function openEnv(){
+  if(envOpened)return;
+  envOpened=true;
+  envScene.style.transition='transform .5s ease';
+  envScene.style.transform='rotateX(0) rotateY(0) scale(1.06)';
+  envBase.classList.add('open');
+  setTimeout(()=>{document.getElementById('envLetter').classList.add('show')},500);
+  setTimeout(()=>{ shootConfetti(40); goTo(1); },2000);
+}
+
+/* ══════════════════════════════════════
+   FLAME MORPHING ANIMATION
+══════════════════════════════════════ */
+const flameP=document.getElementById('flameP');
+const flameShapes=[
+  'M18 58 C8 52 2 42 4 28 C6 18 12 12 18 2 C24 12 30 18 32 28 C34 42 28 52 18 58Z',
+  'M18 58 C10 52 1 40 3 26 C5 15 13 8 18 2 C22 9 31 17 33 30 C35 44 27 52 18 58Z',
+  'M18 58 C9 51 3 44 5 30 C7 19 11 13 18 2 C25 14 29 20 31 30 C33 43 27 53 18 58Z',
+];
+let fi=0, flameAlive=true;
+function morphFlame(){
+  if(!flameAlive)return;
+  fi=(fi+1)%flameShapes.length;
+  flameP.setAttribute('d',flameShapes[fi]);
+  setTimeout(morphFlame,120+Math.random()*100);
+}
+morphFlame();
+
+/* ══════════════════════════════════════
+   S2: MIC / BLOW CANDLE
+══════════════════════════════════════ */
+let candleBlown=false,listening=false,audioCtx=null,analyser=null,micStream=null;
+
+document.getElementById('micBtn').addEventListener('click',async()=>{
+  if(candleBlown)return;
+  if(listening){stopMic();return}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    micStream=stream;
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const src=audioCtx.createMediaStreamSource(stream);
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=512;
+    src.connect(analyser);
+    listening=true;
+    const btn=document.getElementById('micBtn');
+    btn.textContent='🔴 偵測中… 點擊停止';
+    btn.classList.add('on');
+    detectBlow();
+  }catch(e){showToast('請允許麥克風使用權限 🎤')}
+});
+
+function detectBlow(){
+  if(!listening)return;
+  const d=new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(d);
+  const avg=d.reduce((a,b)=>a+b,0)/d.length;
+  if(avg>26){blowCandle();return}
+  requestAnimationFrame(detectBlow);
+}
+function stopMic(){
+  if(micStream)micStream.getTracks().forEach(t=>t.stop());
+  if(audioCtx)audioCtx.close();
+  listening=false;
+  const btn=document.getElementById('micBtn');
+  btn.textContent='🎤 啟動麥克風吹蠟燭';
+  btn.classList.remove('on');
+}
+
+// shake to blow
+let lastA=null;
+window.addEventListener('devicemotion',e=>{
+  const a=e.accelerationIncludingGravity;if(!a||candleBlown)return;
+  if(lastA){const d=Math.abs(a.x-lastA.x)+Math.abs(a.y-lastA.y)+Math.abs(a.z-lastA.z);if(d>28)blowCandle()}
+  lastA={x:a.x,y:a.y,z:a.z};
+});
+
+function blowCandle(){
+  if(candleBlown)return;
+  candleBlown=true;
+  flameAlive=false;
+  stopMic();
+  // flame shrink + spin out
+  const fo=document.getElementById('flameOuter');
+  fo.style.transition='opacity .4s, transform .4s';
+  fo.style.opacity='0';
+  fo.style.transform='scale(1.8) translateY(-20px)';
+  // smoke
+  const sw=document.getElementById('smokeWrap');
+  sw.classList.add('show');
+  animSmoke(sw);
+  document.getElementById('blowHint').innerHTML='願望已送出 ✨<br><small style="font-size:.8em;opacity:.6">正在前往驚喜…</small>';
+  document.getElementById('micBtn').style.display='none';
+  // particle explosion
+  particleExplosion();
+  setTimeout(()=>{goTo(2);initCards()},2400);
+}
+
+function animSmoke(sw){
+  let y=0,frame=0;
+  const sp=sw.querySelector('.sp');
+  (function loop(){
+    frame++;
+    y-=.7;
+    const wob=Math.sin(frame*.15)*4;
+    sp.style.transform=`translateX(calc(-50% + ${wob}px)) translateY(${y}px) scale(${1+frame*.02})`;
+    sp.style.opacity=`${Math.max(0,.6-frame*.012)}`;
+    if(frame<60)requestAnimationFrame(loop);
+  })();
+}
+
+function particleExplosion(){
+  // add burst particles to Three.js scene
+  const count=200;
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(count*3);
+  const vel=[];
+  for(let i=0;i<count;i++){
+    pos[i*3]=0;pos[i*3+1]=0;pos[i*3+2]=0;
+    const theta=Math.random()*Math.PI*2;
+    const phi=Math.random()*Math.PI;
+    const spd=.08+Math.random()*.2;
+    vel.push(new THREE.Vector3(Math.sin(phi)*Math.cos(theta)*spd,Math.sin(phi)*Math.sin(theta)*spd,Math.cos(phi)*spd*.5));
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const cols=[[.96,.78,.26],[.91,.63,.75],[.48,.37,.66],[1,.99,.9]];
+  const c=cols[Math.floor(Math.random()*cols.length)];
+  const mat=new THREE.PointsMaterial({color:new THREE.Color(...c),size:.45,transparent:true,opacity:1});
+  const pts=new THREE.Points(geo,mat);
+  scene.add(pts);
+  let f=0;
+  (function animBurst(){
+    f++;
+    const arr=geo.attributes.position.array;
+    for(let i=0;i<count;i++){
+      arr[i*3]+=vel[i].x;arr[i*3+1]+=vel[i].y;arr[i*3+2]+=vel[i].z;
+      vel[i].y-=.002;
+    }
+    geo.attributes.position.needsUpdate=true;
+    mat.opacity=Math.max(0,1-f/60);
+    if(f<70)requestAnimationFrame(animBurst);
+    else scene.remove(pts);
+  })();
+}
+
+/* ══════════════════════════════════════
+   S3: 3D FLIP CARDS
+══════════════════════════════════════ */
+const wishes=[
+  {icon:'🌟',title:'健康與活力',front:'願你每天都充滿能量，身體健康，笑顏常駐，把每一個清晨都活成詩。',back:'你值得世界上所有最好的事物 🌟'},
+  {icon:'🌸',title:'夢想成真',front:'願你心中所有的期盼都能一一落地，每一個努力都化為最美的果實。',back:'追逐你的夢想，它一直在那裡等你 🌸'},
+  {icon:'💫',title:'幸福滿溢',front:'願快樂不請自來，幸運悄悄跟隨，讓這一年成為你最閃耀的篇章。',back:'你的笑容是這世界最美的風景 💫'},
+];
+let cIdx=0,flipped=false,cards3d=[];
+
+function initCards(){
+  const vp=document.getElementById('cardViewport');
+  vp.innerHTML='';cards3d=[];cIdx=0;flipped=false;
+  wishes.forEach((w,i)=>{
+    const el=document.createElement('div');
+    el.className='wcard-3d';
+    el.innerHTML=`
+      <div class="wcard-face wcard-front">
+        <div class="wi">${w.icon}</div>
+        <div class="wt">${w.title}</div>
+        <div class="wb">${w.front}</div>
+        <div class="whint">點擊翻面 · 左右滑動切換</div>
+      </div>
+      <div class="wcard-face wcard-back">
+        <div class="wi">✨</div>
+        <div class="wb">${w.back}</div>
+      </div>`;
+    const rel=i-0;
+    el.style.cssText=`transform:translateX(${rel*10}px) translateY(${rel*8}px) scale(${1-rel*.05}) rotateY(0deg);z-index:${wishes.length-rel};opacity:${rel<2?1:0}`;
+    vp.appendChild(el);
+    cards3d.push(el);
+    setupCard(el,i);
+  });
+  updateWCtr();
+}
+
+function setupCard(el,idx){
+  let sx=0,sy=0,dx=0,dy=0,down=false,moved=false;
+  let cardFlipped=false;
+  // 3D tilt on hover/touch
+  function tilt(nx,ny){
+    if(cardFlipped)return;
+    const rx=(ny-.5)*-28;
+    const ry=(nx-.5)*28;
+    el.style.transform=el.style.transform.replace(/rotateX[^)]+\)|rotateY[^)]+\)/g,'')
+      .replace(/$/,` rotateX(${rx}deg) rotateY(${ry}deg)`);
+  }
+  function resetTilt(){
+    // keep current base transform, strip extra tilts
+    const cur=el.style.transform.replace(/rotateX[^)]+\)/g,'').replace(/rotateY\([^)]+\)/g,'')+(cardFlipped?' rotateY(180deg)':'');
+    el.style.transition='transform .5s cubic-bezier(.4,0,.2,1)';
+    el.style.transform=cur;
+  }
+
+  el.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;down=true;moved=false;el.classList.add('dragging')},{passive:true});
+  el.addEventListener('touchmove',e=>{
+    if(!down)return;
+    const t=e.touches[0];dx=t.clientX-sx;dy=t.clientY-sy;moved=true;
+    if(Math.abs(dx)>Math.abs(dy)){
+      el.style.transition='none';
+      const base=`translateX(${cIdx*10+dx}px) translateY(${cIdx*8}px) scale(${1-cIdx*.05}) rotate(${dx*.025}deg)`;
+      el.style.transform=base;
+    } else {
+      tilt((t.clientX/innerWidth),(t.clientY/innerHeight));
+    }
+  },{passive:true});
+  el.addEventListener('touchend',e=>{
+    down=false;el.classList.remove('dragging');
+    if(!moved){flipCard(el,idx);return}
+    if(Math.abs(dx)>75){
+      const dir=dx>0?1:-1;
+      el.style.transition='transform .4s cubic-bezier(.4,0,.2,1),opacity .3s';
+      el.style.transform=`translateX(${dir*420}px) rotate(${dir*20}deg)`;
+      el.style.opacity='0';
+      setTimeout(advCard,320);
+    } else {resetTilt();}
+    dx=0;dy=0;moved=false;
+  });
+  el.addEventListener('mousedown',e=>{sx=e.clientX;sy=e.clientY;down=true;moved=false;el.classList.add('dragging')});
+  el.addEventListener('mousemove',e=>{
+    if(!e.buttons){tilt(e.clientX/innerWidth,e.clientY/innerHeight);return}
+    if(!down)return;
+    dx=e.clientX-sx;moved=true;
+    el.style.transition='none';
+    el.style.transform=`translateX(${cIdx*10+dx}px) translateY(${cIdx*8}px) scale(${1-cIdx*.05}) rotate(${dx*.025}deg)`;
+  });
+  el.addEventListener('mouseleave',()=>resetTilt());
+  el.addEventListener('mouseup',e=>{
+    down=false;el.classList.remove('dragging');
+    if(!moved){flipCard(el,idx);return}
+    if(Math.abs(dx)>75){
+      const dir=dx>0?1:-1;
+      el.style.transition='transform .4s cubic-bezier(.4,0,.2,1),opacity .3s';
+      el.style.transform=`translateX(${dir*420}px) rotate(${dir*20}deg)`;
+      el.style.opacity='0';
+      setTimeout(advCard,320);
+    } else resetTilt();
+    dx=0;moved=false;
+  });
+
+  function flipCard(el,idx){
+    if(idx!==cIdx)return;
+    cardFlipped=!cardFlipped;
+    el.style.transition='transform .65s cubic-bezier(.4,0,.2,1)';
+    const base=`translateX(${cIdx*10}px) translateY(${cIdx*8}px) scale(${1-cIdx*.05})`;
+    el.style.transform=base+(cardFlipped?' rotateY(180deg)':'');
+  }
+}
+
+function advCard(){
+  cIdx++;
+  if(cIdx>=wishes.length){setTimeout(()=>{initFinCanvas();goTo(3)},300);return}
+  cards3d.forEach((c,i)=>{
+    const rel=i-cIdx;
+    c.style.transition='transform .45s ease,opacity .35s';
+    if(rel<0){c.style.opacity='0';c.style.zIndex='0'}
+    else{
+      c.style.transform=`translateX(${rel*10}px) translateY(${rel*8}px) scale(${1-rel*.05})`;
+      c.style.opacity=rel<2?'1':'0';
+      c.style.zIndex=String(wishes.length-rel);
+    }
+  });
+  updateWCtr();
+}
+function prevCard(){
+  if(cIdx<=0)return;
+  cIdx--;
+  cards3d.forEach((c,i)=>{
+    const rel=i-cIdx;
+    c.style.transition='transform .45s ease,opacity .35s';
+    if(rel<0){c.style.opacity='0';c.style.zIndex='0'}
+    else{c.style.transform=`translateX(${rel*10}px) translateY(${rel*8}px) scale(${1-rel*.05})`;c.style.opacity=rel<2?'1':'0';c.style.zIndex=String(wishes.length-rel)}
+  });
+  updateWCtr();
+}
+function updateWCtr(){document.getElementById('wctr').textContent=`${cIdx+1} / ${wishes.length}`}
+document.getElementById('nextBtn').addEventListener('click',advCard);
+document.getElementById('prevBtn').addEventListener('click',prevCard);
+
+/* ══════════════════════════════════════
+   S4: FINALE CANVAS (fireworks)
+══════════════════════════════════════ */
+function initFinCanvas(){
+  shootConfetti(80);
+  const fc=document.getElementById('finCanvas');
+  fc.width=innerWidth;fc.height=innerHeight;
+  const ctx=fc.getContext('2d');
+  const rockets=[];
+  function spawnRocket(){
+    rockets.push({x:Math.random()*fc.width,y:fc.height,vx:(Math.random()-.5)*2,vy:-(6+Math.random()*4),life:0,burst:false,particles:[]});
+  }
+  spawnRocket();spawnRocket();
+  const cols=['#F5C842','#E8A0BF','#7B5EA7','#fff','#f97316','#a8edea'];
+  let ff=0;
+  (function animFin(){
+    ff++;
+    ctx.clearRect(0,0,fc.width,fc.height);
+    if(ff%40===0)spawnRocket();
+    rockets.forEach((r,ri)=>{
+      if(!r.burst){
+        r.x+=r.vx;r.y+=r.vy;r.vy+=.12;r.life++;
+        ctx.beginPath();ctx.arc(r.x,r.y,3,0,Math.PI*2);ctx.fillStyle=cols[ri%cols.length];ctx.globalAlpha=.9;ctx.fill();
+        if(r.vy>=0){
+          r.burst=true;
+          for(let i=0;i<50;i++){const a=Math.random()*Math.PI*2;const sp=1.5+Math.random()*3;r.particles.push({x:r.x,y:r.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0,c:cols[Math.floor(Math.random()*cols.length)]})}
+        }
+      } else {
+        r.particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.04;p.life++;ctx.beginPath();ctx.arc(p.x,p.y,2,0,Math.PI*2);ctx.fillStyle=p.c;ctx.globalAlpha=Math.max(0,1-p.life/55);ctx.fill()});
+        r.particles=r.particles.filter(p=>p.life<60);
+      }
+    });
+    rockets.splice(0,rockets.filter(r=>r.burst&&r.particles.length===0).length);
+    ctx.globalAlpha=1;
+    if(ff<300)requestAnimationFrame(animFin);
+    else ctx.clearRect(0,0,fc.width,fc.height);
+  })();
+}
+
+/* ══════════════════════════════════════
+   CONFETTI DOM
+══════════════════════════════════════ */
+const cCols=['#F5C842','#E8A0BF','#7B5EA7','#fff','#f97316','#a8edea','#c084fc'];
+function shootConfetti(n=60){
+  for(let i=0;i<n;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='cf';
+      const sz=4+Math.random()*10;
+      const tx=`${(Math.random()-.5)*160}px`;
+      const dur=`${1+Math.random()*.9}s`;
+      const del=`${Math.random()*.5}s`;
+      el.style.cssText=`left:${15+Math.random()*70}%;top:${-5+Math.random()*20}%;width:${sz}px;height:${sz}px;background:${cCols[Math.floor(Math.random()*cCols.length)]};border-radius:${Math.random()>.4?'50%':'2px'};--dur:${dur};--del:${del};--tx:${tx}`;
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),2500);
+    },i*22);
+  }
+}
+
+/* ══════════════════════════════════════
+   TOAST + RESTART
+══════════════════════════════════════ */
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2600)}
+
+function doRestart(){
+  envOpened=false;candleBlown=false;flameAlive=true;
+  cIdx=0;listening=false;
+  document.getElementById('envBase').classList.remove('open');
+  document.getElementById('envLetter').classList.remove('show');
+  document.getElementById('envScene').style.transform='';
+  document.getElementById('flameOuter').style.cssText='';
+  document.getElementById('smokeWrap').classList.remove('show');
+  document.getElementById('blowHint').textContent='對著手機吹一口氣來許願 🕯️';
+  const mb=document.getElementById('micBtn');
+  mb.style.display='';mb.textContent='🎤 啟動麥克風吹蠟燭';mb.classList.remove('on');
+  morphFlame();
+  goTo(0);
+}
+</script>
+</body>
+</html>
